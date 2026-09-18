@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Döngü Takibi</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@400;500;600&display=swap');
+
+    :root {
+      --bg: #0f0a10;
+      --surface: #1a1020;
+      --surface2: #221529;
+      --border: #2e1d3a;
+      --accent: #d4547a;
+      --text: #f2e8ef;
+      --text2: #b89aaa;
+      --text3: #7a5e6c;
+      --ok: #4caf82;
+      --no: #e05555;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(15, 10, 16, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .topbar-title {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.1rem;
+      color: var(--text);
+    }
+    .topbar-title span { color: var(--accent); font-style: italic; }
+
+    .date-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 6px 14px 6px 10px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      flex-shrink: 0;
+    }
+    .date-pill:hover { border-color: var(--accent); }
+    .date-pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+    .date-pill input[type="date"] {
+      border: none; background: transparent;
+      color: var(--text2);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.82rem; font-weight: 500;
+      outline: none; cursor: pointer; width: 110px;
+    }
+    .date-pill input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cursor: pointer; width: 14px; }
+
+    .hero { padding: 32px 20px 20px; text-align: center; }
+
+    .cycle-ring { position: relative; width: 160px; height: 160px; margin: 0 auto 20px; }
+    .cycle-ring svg { transform: rotate(-90deg); width: 160px; height: 160px; }
+    .ring-track { fill: none; stroke: var(--surface2); stroke-width: 10; }
+    .ring-fill { fill: none; stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset 0.8s cubic-bezier(0.4,0,0.2,1), stroke 0.4s; }
+    .ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+    .ring-day { font-family: 'DM Serif Display', serif; font-size: 2.4rem; line-height: 1; color: var(--text); }
+    .ring-label { font-size: 0.72rem; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; }
+    .hero-phase { font-family: 'DM Serif Display', serif; font-size: 1.5rem; color: var(--text); margin-bottom: 6px; }
+    .hero-sub { font-size: 0.85rem; color: var(--text2); }
+
+    .hero-empty { padding: 60px 20px; text-align: center; }
+    .hero-empty .big { font-family: 'DM Serif Display', serif; font-size: 1.8rem; color: var(--text); margin-bottom: 8px; }
+    .hero-empty .sub { font-size: 0.88rem; color: var(--text2); line-height: 1.6; }
+
+    .timeline { display: flex; gap: 6px; padding: 0 20px 24px; overflow-x: auto; scrollbar-width: none; }
+    .timeline::-webkit-scrollbar { display: none; }
+    .tl-day { display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0; width: 32px; }
+    .tl-dot { width: 8px; height: 8px; border-radius: 50%; opacity: 0.25; transition: opacity 0.2s, transform 0.2s; }
+    .tl-dot.past { opacity: 0.55; }
+    .tl-dot.today { opacity: 1; transform: scale(1.5); }
+    .tl-num { font-size: 0.65rem; color: var(--text3); }
+    .tl-num.today { color: var(--accent); font-weight: 600; }
+
+    .section-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text3); padding: 0 20px; margin-bottom: 10px; }
+
+    .phases { display: flex; flex-direction: column; gap: 8px; padding: 0 16px; margin-bottom: 8px; }
+
+    .phase-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; transition: border-color 0.2s; }
+    .phase-card.active { border-color: var(--accent); }
+
+    .phase-head { display: flex; align-items: center; gap: 12px; padding: 14px 16px; cursor: pointer; user-select: none; }
+    .phase-stripe { width: 4px; height: 36px; border-radius: 4px; flex-shrink: 0; }
+    .phase-meta { flex: 1; }
+    .phase-name { font-size: 0.95rem; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+    .phase-sub { font-size: 0.78rem; color: var(--text3); }
+    .phase-right-info { text-align: right; flex-shrink: 0; }
+    .phase-date-main { font-size: 0.85rem; font-weight: 600; color: var(--text2); }
+    .phase-date-end { font-size: 0.72rem; color: var(--text3); margin-top: 1px; }
+    .chevron { color: var(--text3); font-size: 0.65rem; transition: transform 0.25s; flex-shrink: 0; }
+    .phase-card.open .chevron { transform: rotate(180deg); }
+    .now-badge { font-size: 0.68rem; font-weight: 600; padding: 2px 8px; border-radius: 20px; color: var(--accent); background: rgba(212,84,122,0.12); margin-top: 3px; display: inline-block; }
+
+    .phase-body { max-height: 0; overflow: hidden; transition: max-height 0.35s ease; }
+    .phase-card.open .phase-body { max-height: 1000px; }
+    .phase-body-inner { border-top: 1px solid var(--border); padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+
+    .detail-group-title { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text3); margin-bottom: 8px; }
+    .detail-list { display: flex; flex-direction: column; gap: 6px; }
+    .detail-row { display: flex; align-items: flex-start; gap: 8px; font-size: 0.84rem; color: var(--text2); line-height: 1.5; }
+    .detail-row .icon { flex-shrink: 0; width: 16px; text-align: center; margin-top: 1px; font-size: 0.75rem; }
+    .detail-row.ok { color: #8dd4b0; }
+    .detail-row.ok .icon { color: var(--ok); }
+    .detail-row.no { color: #e09090; }
+    .detail-row.no .icon { color: var(--no); }
+
+    .next-box { margin: 8px 16px 40px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; display: flex; align-items: center; gap: 14px; }
+    .next-icon { font-size: 1.4rem; flex-shrink: 0; }
+    .next-text { font-size: 0.85rem; color: var(--text2); line-height: 1.5; }
+    .next-text strong { color: var(--text); font-weight: 600; }
+
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-title">döngü <span>takibi</span></div>
+  <div class="date-pill">
+    <div class="dot"></div>
+    <input type="date" id="startDate" onchange="onDateChange()" />
+  </div>
+</div>
+
+<div id="hero-empty" class="hero-empty">
+  <div class="big">Döngünü takip et</div>
+  <div class="sub">Son regl başlangıç tarihini<br>sağ üstten seç.</div>
+</div>
+
+<div id="hero" class="hidden">
+  <div class="hero">
+    <div class="cycle-ring">
+      <svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
+        <circle class="ring-track" cx="80" cy="80" r="65" />
+        <circle class="ring-fill" id="ring-fill" cx="80" cy="80" r="65"
+          stroke-dasharray="408.41" stroke-dashoffset="408.41" />
+      </svg>
+      <div class="ring-center">
+        <div class="ring-day" id="ring-day">—</div>
+        <div class="ring-label">gün</div>
+      </div>
+    </div>
+    <div class="hero-phase" id="hero-phase">—</div>
+    <div class="hero-sub" id="hero-sub">—</div>
+  </div>
+  <div class="timeline" id="timeline"></div>
+</div>
+
+<div id="phases-wrap" class="hidden">
+  <div class="section-label">Faz takvimi</div>
+  <div class="phases" id="phases-list"></div>
+  <div class="next-box" id="next-box"></div>
+</div>
+
+<script>
+  const COLORS = ['#c0415a','#7c9e5c','#c9a84c','#6b7bb8'];
+  const PHASES = [
+    {
+      name:"Menstrüel Faz", sub:"Regl dönemi", icon:"🔴", startDay:1, endDay:5,
+      details:{
+        cilt:[{text:"Peptit ok",type:"ok"},{text:"Tüm asitler (AHA, BHA, Retinal) yasak",type:"no"}],
+        beslenme:[{text:"Protein + demir ağırlıklı beslen"},{text:"Omega 3 alımını durdur",type:"no"},{text:"Şekerden uzak dur — direkt yağ olur",type:"no"},{text:"Karbonhidratı patates ve yulaftan al"},{text:"Zerdeçal ve zencefil iyi gelir"}],
+        egzersiz:[{text:"Düşük tempo yürüyüş + pilates"},{text:"Yüksek tempo yasak — kortizolü artırır",type:"no"}],
+      }
+    },
+    {
+      name:"Foliküler Faz", sub:"Enerji yükseliyor", icon:"🌱", startDay:6, endDay:10,
+      details:{
+        cilt:[{text:"Retinal + AHA: Hafif doz",type:"ok"},{text:"Peptit ok",type:"ok"},{text:"BHA yasak",type:"no"}],
+        beslenme:[{text:"En kolay yağ yakılan dönem"},{text:"Lif + probiyotik al"},{text:"Tavuk, balık, yumurta beyazı, nohut/mercimek"},{text:"Karbonhidratı bulgurdan al"}],
+        egzersiz:[{text:"Yağ yakımı hızlı olur"},{text:"Normal tempo pilates + yürüyüş"},{text:"Kuvvet antrenmanları: Squat, üst vücut"}],
+      }
+    },
+    {
+      name:"Ovülasyon", sub:"Yumurtlama", icon:"✨", startDay:11, endDay:16,
+      details:{
+        cilt:[{text:"Tüm ürünler ok",type:"ok"}],
+        beslenme:[{text:"Yüksek protein: balık, hindi, yumurta, quark"},{text:"Bulgur, nohut, kinoa salataları"},{text:"Salatalık, kereviz, ananas — ödem atar"},{text:"Tuz ve sütlü tatlılar yasak",type:"no"}],
+        egzersiz:[{text:"İyice ısınmadan başlama — sakatlık riski yüksek",type:"no"},{text:"Güçlü pilates, Crossfit, tempolu yürüyüş"}],
+      }
+    },
+    {
+      name:"Luteal Faz", sub:"Dinlenme dönemi", icon:"🌙", startDay:17, endDay:28,
+      details:{
+        cilt:[{text:"Retinal, BHA, Peptit ok",type:"ok"},{text:"AHA yasak",type:"no"}],
+        beslenme:[{text:"En dikkatli dönem — iştah çok açık olur"},{text:"Protein ağırlıklı, az karb + bol yeşil salata"},{text:"Magnezyum al: badem, %70 bitter çikolata, ıspanak"},{text:"Kefir, yoğurt, soğan, sarımsak, enginar"},{text:"Hamurişi ve aşırı kahve yasak",type:"no"}],
+        egzersiz:[{text:"Gün 17–22: orta tempo pilates + yürüyüş"},{text:"Gün 23–28: hafif pilates + 45 dk tempolu yürüyüş"}],
+      }
+    },
+  ];
+
+  function addDays(date, d) { const r=new Date(date); r.setDate(r.getDate()+d); return r; }
+  function fmt(d) { return d.toLocaleDateString("tr-TR",{day:"numeric",month:"long"}); }
+  function fmtFull(d) { return d.toLocaleDateString("tr-TR",{day:"numeric",month:"long",year:"numeric"}); }
+  function getDayOfCycle(start, today) { const diff=Math.floor((today-start)/86400000); return diff<0?null:(diff%28)+1; }
+  function getPhase(day) { return PHASES.find(p=>day>=p.startDay&&day<=p.endDay)||null; }
+
+  function renderItems(items) {
+    return items.map(item=>{
+      const cls=item.type==="ok"?"ok":item.type==="no"?"no":"";
+      const icon=item.type==="ok"?"✓":item.type==="no"?"✗":"·";
+      return `<div class="detail-row ${cls}"><span class="icon">${icon}</span><span>${item.text}</span></div>`;
+    }).join("");
+  }
+
+  function togglePhase(i) { document.getElementById(`pc-${i}`).classList.toggle("open"); }
+
+  function calculate(input) {
+    const start=new Date(input+"T00:00:00");
+    const today=new Date(); today.setHours(0,0,0,0);
+    const day=getDayOfCycle(start,today);
+    const phase=day?getPhase(day):null;
+    const phaseIdx=phase?PHASES.indexOf(phase):-1;
+    const color=phaseIdx>=0?COLORS[phaseIdx]:'#d4547a';
+    const circumference=408.41;
+
+    document.getElementById("hero-empty").classList.add("hidden");
+    document.getElementById("hero").classList.remove("hidden");
+    document.getElementById("phases-wrap").classList.remove("hidden");
+
+    const offset=circumference*(1-(day?day/28:0));
+    const rf=document.getElementById("ring-fill");
+    rf.style.strokeDashoffset=offset;
+    rf.style.stroke=color;
+    document.getElementById("ring-day").textContent=day||"—";
+    document.getElementById("hero-phase").textContent=phase?`${phase.icon} ${phase.name}`:"—";
+    document.getElementById("hero-sub").textContent=phase?phase.sub:"";
+
+    const tlEl=document.getElementById("timeline");
+    let tlHtml="";
+    for(let d=1;d<=28;d++){
+      const p=getPhase(d); const pIdx=p?PHASES.indexOf(p):0; const c=COLORS[pIdx];
+      const isPast=day&&d<day; const isToday=d===day;
+      const cls=isToday?"today":isPast?"past":"";
+      tlHtml+=`<div class="tl-day"><div class="tl-dot ${cls}" style="background:${c}"></div><div class="tl-num ${isToday?'today':''}">${d}</div></div>`;
+    }
+    tlEl.innerHTML=tlHtml;
+    if(day){ setTimeout(()=>{ const el=tlEl.children[day-1]; if(el) el.scrollIntoView({inline:"center",behavior:"smooth"}); },100); }
+
+    let html="";
+    PHASES.forEach((p,i)=>{
+      const pStart=addDays(start,p.startDay-1); const pEnd=addDays(start,p.endDay-1);
+      const isActive=phase&&phase.name===p.name; const c=COLORS[i];
+      html+=`<div class="phase-card ${isActive?"active open":""}" id="pc-${i}">
+        <div class="phase-head" onclick="togglePhase(${i})">
+          <div class="phase-stripe" style="background:${c}"></div>
+          <div class="phase-meta">
+            <div class="phase-name">${p.icon} ${p.name}</div>
+            <div class="phase-sub">Gün ${p.startDay}–${p.endDay} · ${p.sub}</div>
+            ${isActive?`<div class="now-badge">● Şu an bu fazdayken</div>`:""}
+          </div>
+          <div class="phase-right-info">
+            <div class="phase-date-main">${fmt(pStart)}</div>
+            <div class="phase-date-end">– ${fmt(pEnd)}</div>
+          </div>
+          <div class="chevron">▼</div>
+        </div>
+        <div class="phase-body"><div class="phase-body-inner">
+          <div class="detail-group"><div class="detail-group-title">💆 Cilt Bakımı</div><div class="detail-list">${renderItems(p.details.cilt)}</div></div>
+          <div class="detail-group"><div class="detail-group-title">🥗 Beslenme</div><div class="detail-list">${renderItems(p.details.beslenme)}</div></div>
+          <div class="detail-group"><div class="detail-group-title">🏃 Egzersiz</div><div class="detail-list">${renderItems(p.details.egzersiz)}</div></div>
+        </div></div>
+      </div>`;
+    });
+    document.getElementById("phases-list").innerHTML=html;
+
+    const nextStart=addDays(start,28);
+    const daysLeft=Math.round((nextStart-today)/86400000);
+    const daysText=daysLeft>0?`${daysLeft} gün sonra`:daysLeft===0?"bugün":"geçti";
+    document.getElementById("next-box").innerHTML=`
+      <div class="next-icon">🔄</div>
+      <div class="next-text">Sonraki döngü: <strong>${fmtFull(nextStart)}</strong><br>
+      <span style="color:var(--text3);font-size:0.8rem">${daysText}</span></div>`;
+  }
+
+  function onDateChange() {
+    const val=document.getElementById("startDate").value;
+    if(!val) return;
+    try { localStorage.setItem("cycleStartDate",val); } catch(e) {}
+    try { sessionStorage.setItem("cycleStartDate",val); } catch(e) {}
+    location.hash=val;
+    calculate(val);
+  }
+
+  let saved=location.hash.replace("#","");
+  if(!saved||!/^\d{4}-\d{2}-\d{2}$/.test(saved)){ try{ saved=localStorage.getItem("cycleStartDate")||""; }catch(e){} }
+  if(!saved||!/^\d{4}-\d{2}-\d{2}$/.test(saved)){ try{ saved=sessionStorage.getItem("cycleStartDate")||""; }catch(e){} }
+  if(saved&&/^\d{4}-\d{2}-\d{2}$/.test(saved)){
+    document.getElementById("startDate").value=saved;
+    calculate(saved);
+  }
+</script>
+</body>
+</html>
